@@ -1,0 +1,752 @@
+---
+title: "Synergistic relationship between muscle thickness, muscular strength, and functional fitness after resistance training in older women."
+format: html
+editor: visual
+---
+
+## Libraries
+
+```{r}
+library(rmcorr)
+library(readxl)
+library(reshape2)
+library(lmerTest)
+library(rstatix)
+library(multcomp)
+library(lsmeans)
+library(ggpubr) 
+library(ggdist)
+library(car)
+library(tidyr)
+library(dplyr)
+library(psych)
+library(superb) 
+library(cocor)
+library(Matrix)
+```
+
+## Setting working directory
+
+```{r}
+setwd("")
+```
+
+## Loading dataset
+
+```{r}
+tidy_data1 <- readxl::read_excel("Df.xlsx", sheet = 1)
+tidy_data1$Time <- as.factor(tidy_data1$Time)
+```
+
+## Descriptive statistics
+
+First, more general characteristics:
+
+```{r}
+tidy_data1 |> 
+  dplyr::group_by(Time) |> 
+  dplyr::summarise(Age = format(mean(Age_), digits = 3),
+                   AgeSD = format(sd(Age_), digits = 3),
+                   Weight = format(mean(Weight_), digits = 3),
+                   WeightSD = format(sd(Weight_), digits = 3),
+                   Height = format(mean(Height_), digits = 3),
+                   HeightSD = format(sd(Height_), digits = 3),
+                   BMI = format(mean(BMI_), digits = 3),
+                   BMISD = format(sd(BMI_), digits = 3))
+```
+
+Eating habits:
+
+```{r}
+
+tidy_data_eating <- readxl::read_excel("Df_eating_habits.xlsx", sheet = 1)
+tidy_data_eating$Time <- as.factor(tidy_data_eating$Time)
+
+
+
+tidy_data_eating |> 
+  dplyr::group_by(Time) |> 
+  dplyr::summarise(TotalEnergy = format(mean(TotalEnergy_), digits = 3),
+                   TotalEnergySD = format(sd(TotalEnergy_), digits = 3),
+                   RelativeEnergy = format(mean(RelativeEnergy_), digits = 3),
+                   RelativeEnergySD = format(sd(RelativeEnergy_), digits = 3),
+                   PtnKg = format(mean(PtnKg_), digits = 3),
+                   PtnKgSD = format(sd(PtnKg_), digits = 3),
+                   CHOKg_ = format(mean(CHOKg_), digits = 3),
+                   CHOKgSD = format(sd(CHOKg_), digits = 3),
+                   LipKg = format(mean(LipKg_), digits = 3),
+                   LipKgSD = format(sd(LipKg_), digits = 3))
+```
+
+Muscle thickness:
+
+```{r}
+tidy_data1 |> 
+  dplyr::group_by(Time) |> 
+  dplyr::summarise(MidThighR = format(mean(MidThighThickR_), digits = 3),
+                   MidThighR_SD = format(sd(MidThighThickR_), digits = 2),
+                   MidThighL = format(mean(MidThighThickL_), digits = 3),
+                   MidThighL_SD = format(sd(MidThighThickL_), digits = 2),
+                   LatThighR = format(mean(LateralThighThickR_), digits = 2),
+                   LatThighR_SD = format(sd(LateralThighThickR_), digits = 3),
+                   LatThighL = format(mean(LateralThighThickL_), digits = 2),
+                   LatThighL_SD = format(sd(LateralThighThickL_), digits = 2),
+                   BicepsR = format(mean(BicepsThickR_), digits = 3),
+                   BicepsR_SD = format(sd(BicepsThickR_), digits = 2),
+                   BicepsL = format(mean(BicepsThickL_), digits = 3),
+                   BicepsL_SD = format(sd(BicepsThickL_), digits = 2),
+                   ThicknessSum = format(mean(ThicknessSum_), digits = 3),
+                   ThicknessSumSD = format(sd(ThicknessSum_), digits = 2))
+```
+
+Muscular strength:
+
+```{r}
+tidy_data1 |> 
+  dplyr::group_by(Time) |> 
+  dplyr::summarise(
+    ChestPress = format(mean(ChestPress_, na.rm = T), digits = 3),
+    ChestPress_SD = format(sd(ChestPress_, na.rm = T), digits = 2),
+    LegExtension = format(mean(LegExtension_, na.rm = T), digits = 3),
+    LegExtension_SD = format(sd(LegExtension_, na.rm = T), digits = 2),
+    PreacherCurl = format(mean(PreacherCurl_, na.rm = T), digits = 3),
+    PreacherCurlSD = format(sd(PreacherCurl_, na.rm = T), digits = 2),
+    STL = format(mean(STL_, na.rm = T), digits = 4),
+    STLSD = format(sd(STL_, na.rm = T), digits = 3),
+    GripStrength = format(mean(GripStrength_, na.rm = T), digits = 4),
+    GripStrengthSD = format(sd(GripStrength_, na.rm = T), digits = 3))
+```
+
+Functional fitness:
+
+```{r}
+tidy_data1 |> 
+  dplyr::group_by(Time) |> 
+  dplyr::summarise(
+    `4mGS` = format(mean(GaitSpeed_, na.rm = T), digits = 3),
+    `4mGS_SD` = format(sd(GaitSpeed_, na.rm = T), digits = 2),
+    TUG = format(mean(TUG_, na.rm = T), digits = 3),
+    TUG_SD = format(sd(TUG_, na.rm = T), digits = 2),
+    `5STS` = format(mean(STSFT_, na.rm = T), digits = 3),
+    `5STS_SD` = format(sd(STSFT_, na.rm = T), digits = 2),
+    `30STS` = format(mean(STS30s_, na.rm = T), digits = 3),
+    `30STS_SD` = format(sd(STS30s_, na.rm = T), digits = 2),
+    `6MWT ` = format(mean(SixMin_, na.rm = T), digits = 4),
+    `6MWT_SD` = format(sd(SixMin_, na.rm = T), digits = 3),)
+```
+
+## Checking assumptions
+
+Normality
+
+```{r}
+ggqqplot(tidy_data1, "ChestPress_", facet.by = "Time")
+ggqqplot(tidy_data1, "LegExtension_", facet.by = "Time")
+ggqqplot(tidy_data1, "PreacherCurl_", facet.by = "Time")
+ggqqplot(tidy_data1, "STL_", facet.by = "Time")
+ggqqplot(tidy_data1, "GripStrength_", facet.by = "Time")
+ggqqplot(tidy_data1, "GaitSpeed_", facet.by = "Time")
+ggqqplot(tidy_data1, "STS30s_", facet.by = "Time")
+ggqqplot(tidy_data1, "STSFT_", facet.by = "Time")
+ggqqplot(tidy_data1, "TUG_", facet.by = "Time")
+ggqqplot(tidy_data1, "SixMin_", facet.by = "Time")
+ggqqplot(tidy_data1, "MidThighThickR_", facet.by = "Time")
+ggqqplot(tidy_data1, "MidThighThickL_", facet.by = "Time")
+ggqqplot(tidy_data1, "LateralThickR_", facet.by = "Time")
+ggqqplot(tidy_data1, "LateralThickL_", facet.by = "Time")
+ggqqplot(tidy_data1, "BicepsThickR_", facet.by = "Time")
+ggqqplot(tidy_data1, "BicepsThickL_", facet.by = "Time")
+ggqqplot(tidy_data1, "BicepsThickness_", facet.by = "Time")
+ggqqplot(tidy_data1, "LegsThickness_", facet.by = "Time")
+ggqqplot(tidy_data1, "ThicknessSum_", facet.by = "Time")
+```
+
+Homogeneity of variances
+
+```{r}
+leveneTest(ChestPress_ ~ Time,  center = median, data = tidy_data1)
+leveneTest(LegExtension_ ~ Time,  center = median, data = tidy_data1)
+leveneTest(PreacherCurl_ ~ Time,  center = median, data = tidy_data1)
+leveneTest(STL_ ~ Time, center = median, data = tidy_data1)
+leveneTest(GripStrength_ ~ Time, center = median, data = tidy_data1)
+leveneTest(GaitSpeed_ ~ Time, center = median, data = tidy_data1)
+leveneTest(STS30s_ ~ Time, center = median, data = tidy_data1)
+leveneTest(STSFT_ ~ Time, center = median, data = tidy_data1)
+leveneTest(TUG_ ~ Time, center = median, data = tidy_data1)
+leveneTest(SixMin_ ~ Time, center = median, data = tidy_data1)
+leveneTest(TUG_ ~ Time, center = median, data = tidy_data1)
+leveneTest(BicepsThickR_ ~ Time, center = median, data = tidy_data1)
+leveneTest(BicepsThickL_ ~ Time, center = median, data = tidy_data1)
+leveneTest(BicepsThickness_ ~ Time, center = median, data = tidy_data1)
+leveneTest(MidThighThickR_ ~ Time, center = median, data = tidy_data1)
+leveneTest(MidThighThickL_ ~ Time, center = median, data = tidy_data1)
+leveneTest(LateralThighThickR_ ~ Time, center = median, data = tidy_data1)
+leveneTest(LateralThighThickL_ ~ Time, center = mean, data = tidy_data1)
+leveneTest(LegsThickness_ ~ Time, center = median, data = tidy_data1)
+leveneTest(ThicknessSum_ ~ Time, center = median, data = tidy_data1)
+```
+
+## Changes from baseline to 12 and 24 weeks of RT
+
+#### One-way ANOVA with a random intercept
+
+General characteristics
+
+```{r}
+#Weight
+Weight_model <- lme4::lmer(Weight_ ~ Time + (1|ID), data = tidy_data1) 
+lmerTest::ranova(Weight_model)
+Anova(Weight_model)
+lsmeans(Weight_model, pairwise ~ Time, adjust = "tukey")
+
+#BMI
+BMI_model <- lme4::lmer(BMI_ ~ Time + (1|ID), data = tidy_data1) 
+lmerTest::ranova(BMI_model)
+Anova(BMI_model)
+lsmeans(BMI_model, pairwise ~ Time, adjust = "tukey")
+```
+
+Eating habits
+
+```{r}
+#Total energy 
+TotEnerg_model <- lme4::lmer(TotalEnergy_ ~ Time + (1|ID), data = tidy_data_eating) 
+lmerTest::ranova(TotEnerg_model)
+Anova(TotEnerg_model)
+lsmeans(TotEnerg_model, pairwise ~ Time, adjust = "tukey")
+
+#Relative energy 
+RelEnerg <- lme4::lmer(RelativeEnergy_ ~ Time + (1|ID), data = tidy_data_eating) 
+lmerTest::ranova(RelEnerg)
+Anova(RelEnerg)
+lsmeans(RelEnerg, pairwise ~ Time, adjust = "tukey")
+
+#Relative protein
+Ptn_model <- lme4::lmer(PtnKg_ ~ Time + (1|ID), data = tidy_data_eating) 
+lmerTest::ranova(Ptn_model)
+Anova(Ptn_model)
+lsmeans(Ptn_model, pairwise ~ Time, adjust = "tukey")
+
+#Relative CHO
+CHO_model <- lme4::lmer(CHOKg_ ~ Time + (1|ID), data = tidy_data_eating) 
+lmerTest::ranova(CHO_model)
+Anova(CHO_model)
+lsmeans(CHO_model, pairwise ~ Time, adjust = "tukey")
+
+
+#Relative lipids
+Lip_model <- lme4::lmer(LipKg_ ~ Time + (1|ID), data = tidy_data_eating) 
+lmerTest::ranova(Lip_model)
+Anova(Lip_model)
+lsmeans(Lip_model, pairwise ~ Time, adjust = "tukey")
+```
+
+Muscle thickness
+
+```{r}
+# Right mid Thickness
+RmidlegThick <- lme4::lmer(MidThighThickR_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(RmidlegThick)
+Anova(RmidlegThick)
+lsmeans(RmidlegThick, pairwise ~ Time, adjust = "tukey")
+
+# Left mid Thickness
+LmidlegThick <- lme4::lmer(MidThighThickL_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(LmidlegThick)
+Anova(LmidlegThick)
+lsmeans(LmidlegThick, pairwise ~ Time, adjust = "tukey")
+
+# Right lat Thickness
+RlatlegThick <- lme4::lmer(LateralThighThickR_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(RlatlegThick)
+Anova(RlatlegThick)
+lsmeans(RlatlegThick, pairwise ~ Time, adjust = "tukey")
+
+# Left lat Thickness
+LlatlegThick <- lme4::lmer(LateralThighThickL_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(LlatlegThick)
+Anova(LlatlegThick)
+lsmeans(LlatlegThick, pairwise ~ Time, adjust = "tukey")
+
+# Right front arm Thickness
+RbicepThick <- lme4::lmer(BicepsThickR_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(RbicepThick)
+Anova(RbicepThick)
+lsmeans(RbicepThick, pairwise ~ Time, adjust = "tukey")
+
+# Left front arm Thickness
+LbicepThick <- lme4::lmer(BicepsThickL_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(LbicepThick)
+Anova(LbicepThick)
+lsmeans(LbicepThick, pairwise ~ Time, adjust = "tukey")
+
+# Legs Thickness 
+LegsTotal <- lme4::lmer(LegsThickness ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(LegsTotal)
+Anova(LegsTotal)
+lsmeans(LegsTotal, pairwise ~ Time, adjust = "tukey")
+
+# Biceps Thickness
+BicepsTotal <- lme4::lmer(BicepsThickness ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(BicepsTotal)
+Anova(BicepsTotal)
+lsmeans(BicepsTotal, pairwise ~ Time, adjust = "tukey")
+
+#Sum of Thickness
+ThickSum <- lme4::lmer(ThicknessSum_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(ThickSum)
+Anova(ThickSum)
+lsmeans(ThickSum, pairwise ~ Time, adjust = "tukey")
+```
+
+Muscular strength
+
+```{r}
+#Chest press 1RM
+Chest_model <- lme4::lmer(ChestPress_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(Chest_model)
+Anova(Chest_model)
+lsmeans(Chest_model, pairwise ~ Time, adjust = "tukey")
+
+#Leg extension 1RM
+LegExten_model <- lme4::lmer(LegExtension_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(LegExten_model)
+Anova(LegExten_model)
+lsmeans(LegExten_model, pairwise ~ Time, adjust = "tukey")
+
+#Preacher curl 1RM
+PreacherCurl_model <- lme4::lmer(PreacherCurl_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(PreacherCurl_model)
+Anova(PreacherCurl_model)
+lsmeans(PreacherCurl_model, pairwise ~ Time, adjust = "tukey")
+
+#STL 1RM
+STL_model <- lme4::lmer(STL_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(STL_model)
+Anova(STL_model)
+lsmeans(STL_model, pairwise ~ Time, adjust = "tukey")
+
+#Grip strength
+Grip_model <- lme4::lmer(GripStrength_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(Grip_model)
+Anova(Grip_model)
+lsmeans(Grip_model, pairwise ~ Time, adjust = "tukey")
+```
+
+Functional fitness
+
+```{r}
+#Gait speed
+Gait_model <- lme4::lmer(GaitSpeed_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(Gait_model)
+Anova(Gait_model)
+lsmeans(Gait_model, pairwise ~ Time, adjust = "tukey")
+
+#TUG 
+TUG_model <- lme4::lmer(TUG_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(TUG_model)
+Anova(TUG_model)
+lsmeans(TUG_model, pairwise ~ Time, adjust = "tukey")
+
+#5STS 
+STSFT_model <- lme4::lmer(STSFT_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(STSFT_model)
+Anova(STSFT_model)
+lsmeans(STSFT_model, pairwise ~ Time, adjust = "tukey")
+
+#30STS
+STS30_model <- lme4::lmer(STS30s_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(STS30_model)
+Anova(STS30_model)
+lsmeans(STS30_model, pairwise ~ Time, adjust = "tukey")
+
+#Six minutes walk
+SixMin_model <- lme4::lmer(SixMin_ ~ Time + (1|ID), data = tidy_data1)
+lmerTest::ranova(SixMin_model)
+Anova(SixMin_model)
+lsmeans(SixMin_model, pairwise ~ Time, adjust = "tukey")
+
+```
+
+## Correlations
+
+#### Pearson's' correlation coefficient in the baseline
+
+```{r}
+Baseline <- tidy_data1 |> 
+  dplyr::filter(Time == 0) #Object created to make baseline comparisons
+
+
+#Strength
+cor.test(Baseline$BicepsThickness_, Baseline$ChestPress_, method = "pearson")
+cor.test(Baseline$LegsThickness_, Baseline$LegExtension_, method = "pearson")
+cor.test(Baseline$BicepsThickness_, Baseline$PreacherCurl_, method = "pearson")
+cor.test(Baseline$ThicknessSum_, Baseline$STL_, method = "pearson")
+cor.test(Baseline$BicepsThickness_, Baseline$GripStrength_, method = "pearson")
+
+#Functional fitness
+cor.test(Baseline$LegsThickness_, Baseline$GaitSpeed_, method = "pearson")
+cor.test(Baseline$LegsThickness_, Baseline$STS30s_, method = "pearson")
+cor.test(Baseline$LegsThickness_, Baseline$STSFT_, method = "pearson")
+cor.test(Baseline$LegsThickness_, Baseline$TUG_, method = "pearson")
+cor.test(Baseline$LegsThickness_, Baseline$SixMin_, method = "pearson")
+```
+
+#### Pearson's' correlation coefficient between deltas
+
+```{r}
+#Changing to wide format and excluding unnecessary variables
+
+Wide <- tidy_data1  |> 
+  dplyr::select(ID, Time, 
+                ChestPress_, LegExtension_,PreacherCurl_, STL_, GripStrength_,
+                BicepsThickness_, LegsThickness_, ThicknessSum_,
+                GaitSpeed_, TUG_, STSFT_, STS30s_, SixMin_) |> 
+  pivot_wider(names_from = Time,
+              values_from = c(ChestPress_, LegExtension_,PreacherCurl_, 
+                              STL_, GripStrength_,BicepsThickness_, 
+                              LegsThickness_, ThicknessSum_,GaitSpeed_,
+                              TUG_, STSFT_, STS30s_, SixMin_),
+              id_cols = ID) |>  
+  rowwise() |> 
+  dplyr::mutate(DeltaArmsThick = BicepsThickness__2 - BicepsThickness__0,
+                DeltaLegsThick = LegsThickness__2 - LegsThickness__0,
+                DeltaThickSum = ThicknessSum__2 - ThicknessSum__0,
+                DeltaChest = ChestPress__2 - ChestPress__0,
+                DeltaLegExt = LegExtension__2 - LegExtension__0,
+                DeltaPreacher = PreacherCurl__2 - PreacherCurl__0,
+                DeltaSTL = STL__2 - STL__0,
+                DeltaGrip = GripStrength__2 - GripStrength__0,
+                DeltaGait = GaitSpeed__2 - GaitSpeed__0,
+                DeltaTUG = TUG__2 - TUG__0,
+                DeltaSTSfive = STSFT__2 - STSFT__0,
+                DeltaSTSthirty = STS30s__2 - STS30s__0,
+                DeltaSixMin = SixMin__2 - SixMin__0)
+
+
+# Strength
+cor.test(Wide$DeltaArmsThick, Wide$DeltaChest, method = "pearson")
+cor.test(Wide$DeltaLegsThick, Wide$DeltaLegExt, method = "pearson")
+cor.test(Wide$DeltaArmsThick, Wide$DeltaPreacher, method = "pearson")
+cor.test(Wide$DeltaThickSum, Wide$DeltaSTL, method = "pearson")
+cor.test(Wide$DeltaArmsThick, Wide$DeltaGrip, method = "pearson")
+
+#Functional fitness
+cor.test(Wide$DeltaLegsThick, Wide$DeltaGait, method = "pearson")
+cor.test(Wide$DeltaLegsThick, Wide$DeltaTUG, method = "pearson")
+cor.test(Wide$DeltaLegsThick, Wide$DeltaSTSfive, method = "pearson")
+cor.test(Wide$DeltaLegsThick, Wide$DeltaSTSthirty, method = "pearson")
+cor.test(Wide$DeltaLegsThick, Wide$DeltaSixMin, method = "pearson")
+```
+
+#### Repeated measures correlation
+
+Muscular strength
+
+```{r}
+# Chest press
+
+RM_Chest <- rmcorr::rmcorr(participant = ID, measure1 = ChestPress_, 
+                           measure2 = BicepsThickness_, dataset = tidy_data1)
+RM_Chest
+
+# Leg press
+
+RM_Leg <- rmcorr::rmcorr(participant = ID, measure1 = LegExtension_, 
+                         measure2 = LegsThickness_, dataset = tidy_data1)
+RM_Leg
+
+# Preacher curl
+
+RM_Preacher <- rmcorr::rmcorr(participant = ID, measure1 = PreacherCurl_, 
+                              measure2 = BicepsThickness_, dataset = tidy_data1)
+RM_Preacher
+
+# STL
+
+RM_STL <- rmcorr::rmcorr(participant = ID, measure1 = STL_, 
+                         measure2 = ThicknessSum_, dataset = tidy_data1)
+RM_STL
+
+# Handgrip strength
+
+RM_Grip <- rmcorr::rmcorr(participant = ID, measure1 = GripStrength_,
+                          measure2 = BicepsThickness_, dataset = tidy_data1)
+RM_Grip
+```
+
+Functional fitness
+
+```{r}
+# 4 meter walk test
+
+
+RM_Gait <- rmcorr::rmcorr(participant = ID, measure1 = GaitSpeed_, 
+                             measure2 = LegsThickness_, dataset = tidy_data1)
+RM_Gait
+
+# TUG
+
+RM_TUG <- rmcorr::rmcorr(participant = ID, measure1 = TUG_, 
+                          measure2 = LegsThickness_, dataset = tidy_data1)
+RM_TUG
+
+# SLVC
+
+RM_STSfive <- rmcorr::rmcorr(participant = ID, measure1 = STSFT_, 
+                           measure2 = LegsThickness_, dataset = tidy_data1)
+RM_STSfive
+
+# 30sCS
+
+RM_STSthirty <- rmcorr::rmcorr(participant = ID, measure1 = STS30s_, 
+                            measure2 = LegsThickness_, dataset = tidy_data1)
+RM_STSthirty
+
+
+RM_Sixmin <- rmcorr::rmcorr(participant = ID, measure1 = SixMin_, 
+                           measure2 = LegsThickness_, dataset = tidy_data1)
+RM_Sixmin
+
+```
+
+## Comparing correlations with cocor package
+
+#### Chest press
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.63, r.jh = 0.71, r.kh = 0.86, n = 60, 
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = 0.71, r.jh = -0.005, r.kh = 0.07, n = 60, 
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = 0.63, r.jh = -0.005, r.kh = 0.86, n = 60, 
+                         test = "meng1992")
+```
+
+#### Leg extension
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.56, r.jh = 0.51, r.kh = 0.95, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = 0.51, r.jh = 0.16, r.kh = 0.04, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = 0.56, r.jh = 0.16, r.kh = 0.04, n = 60,
+                         test = "meng1992")
+```
+
+#### Preacher curl
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.54, r.jh = 0.78, r.kh = 0.93, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = 0.78, r.jh = 0.29, r.kh = 0.46, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = 0.54, r.jh = 0.29, r.kh = 0.46, n = 60,
+                         test = "meng1992")
+```
+
+#### STL
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.65, r.jh = 0.69, r.kh = 0.95, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = 0.69, r.jh = 0.22, r.kh = 0.22, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = 0.65, r.jh = 0.22, r.kh = 0.22, n = 60,
+                         test = "meng1992")
+```
+
+#### Handgrip strength
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.27, r.jh = 0.61, r.kh = 0.96, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = 0.61, r.jh = 0.11, r.kh = 0.11, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = 0.27, r.jh = 0.11, r.kh = 0.11, n = 60,
+                         test = "meng1992")
+```
+
+#### 4mGS - Gait speed
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.06, r.jh = -0.35, r.kh = 0.77, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = -0.35, r.jh = 0.20, r.kh = -0.04, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = 0.06, r.jh = 0.20, r.kh = -0.67, n = 60,
+                         test = "meng1992")
+```
+
+#### TUG
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = -0.04, r.jh = -0.41, r.kh = 0.87, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = -0.41, r.jh = 0.14, r.kh = -0.11, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = -0.04, r.jh = 0.14, r.kh = -0.59, n = 60,
+                         test = "meng1992")
+```
+
+#### 5STS
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = -0.06, r.jh = -0.45, r.kh = 0.90, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas
+cocor.dep.groups.overlap(r.jk = -0.45, r.jh = -0.08, r.kh = -0.02, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = -0.06, r.jh = -0.08, r.kh = -0.26, n = 60,
+                         test = "meng1992")
+```
+
+#### 30STS
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.13, r.jh = 0.27, r.kh = 0.90, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas 
+cocor.dep.groups.overlap(r.jk = -0.13, r.jh = 0.27, r.kh = -0.02, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = -0.13, r.jh = 0.13, r.kh = -0.26, n = 60,
+                         test = "meng1992")
+```
+
+#### 6MWT
+
+```{r}
+#Mcorr and baseline
+cocor.dep.groups.overlap(r.jk = 0.05, r.jh = 0.42, r.kh = 0.88, n = 60,
+                         test = "meng1992")
+#Mcorr and deltas 
+cocor.dep.groups.overlap(r.jk = 0.02, r.jh = 0.42, r.kh = -0.11, n = 60,
+                         test = "meng1992")
+#Baseline and deltas
+cocor.dep.groups.overlap(r.jk = 0.02, r.jh = 0.05, r.kh = -0.26, n = 60,
+                         test = "meng1992")
+```
+
+## Creating the repeated measures regression models (i.e., LMM)
+
+#### Muscular strength
+
+```{r}
+ChestRegression <- lmerTest::lmer(ChestPress_ ~ BicepsThickness_ + BMI_ + 
+                                    Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(ChestRegression)
+confint(ChestRegression, level = 0.95)
+effectsize::t_to_r(t = 11.384, df_error = 179.94296) #Effect size by r
+car::vif(ChestRegression)
+
+
+LegRegression <- lmerTest::lmer(LegExtension_ ~ LegsThickness_ + BMI_ + 
+                                  Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(LegRegression)
+confint(LegRegression, level = 0.95)
+effectsize::t_to_r(t = 7.762, df_error = 168.6280) #Effect size by r
+car::vif(LegRegression)
+
+
+BicepsRegression <- lmerTest::lmer(PreacherCurl_ ~ BicepsThickness_ + BMI_ +
+                                     Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(BicepsRegression)
+confint(BicepsRegression, level = 0.95)
+effectsize::t_to_r(t = 14.922, df_error = 167.3576) #Effect size by r
+car::vif(BicepsRegression)
+
+
+STLRegression <- lmerTest::lmer(STL_ ~ ThicknessSum_ + BMI_ + 
+                                  Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(STLRegression)
+confint(STLRegression, level = 0.95)
+effectsize::t_to_r(t = 10.672, df_error = 147.2536) #Effect size by r
+car::vif(STLRegression)
+
+
+HSRegression <- lmerTest::lmer(GripStrength_ ~ BicepsThickness_ + BMI_ +
+                                 Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(HSRegression)
+confint(HSRegression, level = 0.95)
+effectsize::t_to_r(t = 9.361, df_error = 137.18801) #Effect size by r
+car::vif(HSRegression)
+```
+
+#### Functional fitness
+
+```{r}
+GaitRegression <- lmerTest::lmer(GaitSpeed_ ~ LegsThickness_ + BMI_ + 
+                                   Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(GaitRegression)
+confint(GaitRegression, level = 0.95)
+effectsize::t_to_r(t = -2.960, df_error = 94.011442) #Effect size by r
+car::vif(GaitRegression)
+
+
+TUGRegression <- lmerTest::lmer(TUG_ ~ LegsThickness_ + BMI_ + 
+                                  Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(TUGRegression)
+confint(TUGRegression, level = 0.95)
+effectsize::t_to_r(t = -3.486, df_error = 87.10843) #Effect size by r
+car::vif(TUGRegression)
+
+
+STSFTRegression <- lmerTest::lmer(STSFT_ ~ LegsThickness_ + BMI_ +
+                                    Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(STSFTRegression)
+confint(STSFTRegression, level = 0.95)
+effectsize::t_to_r(t = -4.982, df_error = 165.350993) #Effect size by r
+car::vif(STSFTRegression)
+
+
+STS30sRegression <- lmerTest::lmer(STS30s_ ~ LegsThickness_ + BMI_ +
+                                     Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(STS30sRegression)
+confint(STS30sRegression, level = 0.95)
+effectsize::t_to_r(t = 3.939, df_error = 176.14768) #Effect size by r 
+car::vif(STS30sRegression)
+
+
+SixRegression <- lmerTest::lmer(SixMin_ ~ LegsThickness_ + BMI_ +
+                                  Age_ + (1| ID), REML = F, data = tidy_data1)
+summary(SixRegression)
+confint(SixRegression, level = 0.95)
+effectsize::t_to_r(t = 4.736, df_error = 138.175) #Effect size by r
+car::vif(SixRegression)
+```
+
+## Example of the repeated measures correlation plots
+
+```{r}
+plot(RM_Gait, tidy_data1, overall = F, lwd = 1.4, xlab = "", ylab = "", font = 1)
+title(ylab = expression("KE "[SUM]*" (cm)"), line=2.2, cex.lab=1.4)
+title(xlab="4-meter-gait speed (s)", line=2.2, cex.lab=1.4)
+text(4.2, 21, cex=1.0, adj = 1, (italic(r[rm])~"= -0.353"))
+text(4.2, 20.3, cex=1.0, adj = 1, (italic(P)~"< 0.001"))
+text(2.4, 21.2, cex=2.0, adj = 1, ("a"))
+```
