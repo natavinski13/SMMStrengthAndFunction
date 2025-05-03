@@ -750,3 +750,203 @@ text(4.2, 21, cex=1.0, adj = 1, (italic(r[rm])~"= -0.353"))
 text(4.2, 20.3, cex=1.0, adj = 1, (italic(P)~"< 0.001"))
 text(2.4, 21.2, cex=2.0, adj = 1, ("a"))
 ```
+
+## Creating the repeated measures mediation models (1-1-1 mediation)
+
+#### Muscular strength
+
+```{r}
+#Chest press ###
+
+Chest_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000, 
+  L2ID="ID", X="Time", Y="ChestPress_",
+  M="BicepsThickness_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+extract.boot.modmed.mlm(Chest_mediation, type = c("indirect"))
+summary(Chest_mediation$model)
+
+Total_eff <- lmerTest::lmer(ChestPress_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+#Leg extension ###
+
+Leg_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000,
+  L2ID="ID", X="Time", Y="LegExtension_",
+  M="LegsThickness_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+extract.boot.modmed.mlm(Leg_mediation, type = c("indirect"))
+summary(Leg_mediation$model)
+
+Total_eff <- lmerTest::lmer(LegExtension_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+#Preacher curl ###
+
+Preacher_mediation<-boot.modmed.mlm.custom(
+tidy_data1, nrep=1000, 
+L2ID="ID", X="Time", Y="PreacherCurl_",
+M="BicepsThickness_",
+boot.type ="case2",
+na.action = na.omit,
+control = list(msMaxIter = 1000, msMaxEval = 1000),
+seed=1234)
+
+extract.boot.modmed.mlm(Preacher_mediation, type = c("indirect"))
+summary(Preacher_mediation$model)
+
+Total_eff <- lmerTest::lmer(PreacherCurl_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+# Total strength ###
+
+STL_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000, 
+  L2ID="ID", X="Time", Y="STL_", 
+  M="ThicknessSum_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+extract.boot.modmed.mlm(STL_mediation, type = c("indirect"))
+summary(STL_mediation$model)
+
+Total_eff <- lmerTest::lmer(STL_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+#Handgrip ###
+
+Grip_mediation<-boot.modmed.mlm.custom(
+tidy_data1, nrep=1000,
+L2ID="ID", X="Time", Y="GripStrength_",
+M="BicepsThickness_",
+boot.type ="case2",
+na.action = na.omit,
+control = list(msMaxIter = 1000, msMaxEval = 1000),
+seed=1234)
+
+extract.boot.modmed.mlm(Grip_mediation, type = c("indirect"))
+summary(Grip_mediation$model)
+
+Total_eff <- lmerTest::lmer(GripStrength_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+```
+
+#### Functional fitness
+
+```{r}
+# Gait speed ###
+
+Gait_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000,
+  L2ID="ID", X="Time", Y="GaitSpeed_", 
+  M="LegsThickness_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+
+extract.boot.modmed.mlm(Gait_mediation, type = c("indirect"))
+summary(Gait_mediation$model)
+
+Total_eff <- lmerTest::lmer(GaitSpeed_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+#TUG ###
+
+TUG_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000,
+  L2ID="ID", X="Time", Y="TUG_",
+  M="LegsThickness_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+
+extract.boot.modmed.mlm(TUG_mediation, type = c("indirect"))
+summary(TUG_mediation$model)
+
+Total_eff <- lmerTest::lmer(TUG_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+#5STS
+
+STSFT_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000,
+  L2ID="ID", X="Time", Y="STSFT_",
+  M="LegsThickness_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+extract.boot.modmed.mlm(STSFT_mediation, type = c("indirect"))
+summary(STSFT_mediation$model)
+
+Total_eff <- lmerTest::lmer(STSFT_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+#STS30s_ ###
+
+STS30s_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000,
+  L2ID="ID", X="Time", Y="STS30s_",
+  M="LegsThickness_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+extract.boot.modmed.mlm(STS30s_mediation, type = c("indirect"))
+summary(STS30s_mediation$model)
+
+Total_eff <- lmerTest::lmer(STS30s_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+
+
+#Six min walk ###
+
+SixMin_mediation<-boot.modmed.mlm.custom(
+  tidy_data1, nrep=1000,
+  L2ID="ID", X="Time", Y="SixMin_",
+  M="LegsThickness_",
+  boot.type ="case2",
+  na.action = na.omit,
+  control = list(msMaxIter = 1000, msMaxEval = 1000),
+  seed=1234)
+
+extract.boot.modmed.mlm(SixMin_mediation, type = c("indirect"))
+summary(SixMin_mediation$model)
+
+Total_eff <- lmerTest::lmer(SixMin_ ~ Time + (1 + Time| ID), data = tidy_data1)
+summary(Total_eff)
+confint(Total_eff)
+```
